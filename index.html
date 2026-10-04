@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>外送便貼快照編輯與列印工作台</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Noto Sans TC 黑體 -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+  <!-- CP936 (GBK) 編碼模組：保障芯燁 (Xprinter) 韌體中文字符相容 -->
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/cpexcel.js"></script>
+
+  <style>
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      background-color: #0f172a;
+      color: #f1f5f9;
+    }
+  </style>
+</head>
+<body class="p-4 md:p-8">
+
+  <div class="max-w-4xl mx-auto space-y-6">
+    <!-- 頂部標題與狀態 -->
+    <header class="flex flex-wrap justify-between items-center bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg gap-4">
+      <div>
+        <h1 class="text-lg font-black text-white tracking-wide">Xprinter 黑體快照列印工作台</h1>
+        <p class="text-xs text-slate-400 mt-0.5">模組: CP936 + HTML5 整合式 Canvas 單圖快照渲染</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="connBadge" class="px-3 py-1 rounded-full text-xs font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+          印表機未連線
+        </span>
+        <button onclick="connectBluetooth()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold active:scale-95 transition-all shadow-md shadow-indigo-600/30">
+          連線 Xprinter
+        </button>
+      </div>
+    </header>
+
+    <!-- 主操作面板 -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+      
+      <!-- 左側：逐行樣式編輯器 -->
+      <section class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-lg space-y-4">
+        <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+          <h2 class="text-sm font-bold text-amber-400">文字與字級微調 (px)</h2>
+          <button onclick="resetDefaults()" class="text-xs text-slate-400 hover:text-white underline">回復預設</button>
+        </div>
+
+        <div class="space-y-4" id="editorRows">
+          <!-- 行 1: 站點與日期 -->
+          <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700 space-y-2">
+            <span class="text-xs text-slate-400 font-bold">第一行：站點與日期</span>
+            <input type="text" id="t1" value="土農-本會直銷站 2026-10-04" oninput="drawSnapshot()" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-amber-500">
+            <div class="flex items-center justify-between text-xs pt-1">
+              <label class="flex items-center gap-1 cursor-pointer">
+                <input type="checkbox" id="b1" onchange="drawSnapshot()" class="accent-amber-500"> <span class="text-slate-300">加粗</span>
+              </label>
+              <div class="flex items-center gap-2">
+                <span class="text-slate-400">字號:</span>
+                <input type="range" id="s1" min="14" max="40" value="22" oninput="drawSnapshot()" class="accent-amber-500 w-24">
+                <span id="v1" class="text-amber-400 font-mono w-8 text-right">22px</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 行 2: 客戶姓名 -->
+          <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700 space-y-2">
+            <span class="text-xs text-slate-400 font-bold">第二行：客戶姓名</span>
+            <input type="text" id="t2" value="王大明" oninput="drawSnapshot()" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-amber-500">
+            <div class="flex items-center justify-between text-xs pt-1">
+              <label class="flex items-center gap-1 cursor-pointer">
+                <input type="checkbox" id="b2" checked onchange="drawSnapshot()" class="accent-amber-500"> <span class="text-slate-300">加粗 (900)</span>
+              </label>
+              <div class="flex items-center gap-2">
+                <span class="text-slate-400">字號:</span>
+                <input type="range" id="s2" min="20" max="64" value="48" oninput="drawSnapshot()" class="accent-amber-500 w-24">
+                <span id="v2" class="text-amber-400 font-mono w-8 text-right">48px</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 行 3: 數量品項 -->
+          <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700 space-y-2">
+            <span class="text-xs text-slate-400 font-bold">第三行：出貨數量品項</span>
+            <input type="text" id="t3" value="2 大瓶 , 1 中瓶" oninput="drawSnapshot()" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-amber-500">
+            <div class="flex items-center justify-between text-xs pt-1">
+              <label class="flex items-center gap-1 cursor-pointer">
+                <input type="checkbox" id="b3" checked onchange="drawSnapshot()" class="accent-amber-500"> <span class="text-slate-300">加粗 (900)</span>
+              </label>
+              <div class="flex items-center gap-2">
+                <span class="text-slate-400">字號:</span>
+                <input type="range" id="s3" min="18" max="52" value="38" oninput="drawSnapshot()" class="accent-amber-500 w-24">
+                <span id="v3" class="text-amber-400 font-mono w-8 text-right">38px</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 行 4: 備註框 -->
+          <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700 space-y-2">
+            <span class="text-xs text-slate-400 font-bold">第四行：特殊備註 (自動外框)</span>
+            <input type="text" id="t4" value="預留款 / 下午取" oninput="drawSnapshot()" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-amber-500">
+            <div class="flex items-center justify-between text-xs pt-1">
+              <label class="flex items-center gap-1 cursor-pointer">
+                <input type="checkbox" id="b4" checked onchange="drawSnapshot()" class="accent-amber-500"> <span class="text-slate-300">加粗</span>
+              </label>
+              <div class="flex items-center gap-2">
+                <span class="text-slate-400">字號:</span>
+                <input type="range" id="s4" min="14" max="36" value="20" oninput="drawSnapshot()" class="accent-amber-500 w-24">
+                <span id="v4" class="text-amber-400 font-mono w-8 text-right">20px</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 右側：即時 Canvas 快照預覽與出單 -->
+      <section class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-lg flex flex-col items-center gap-4">
+        <div class="w-full flex justify-between items-center border-b border-slate-700 pb-2">
+          <h2 class="text-sm font-bold text-slate-300">畫布單圖快照預覽</h2>
+          <span class="text-[11px] text-slate-400 font-mono" id="canvasMetrics">384 x 0 px</span>
+        </div>
+
+        <!-- 58mm 標準寬度模擬區 (384px) -->
+        <div class="bg-slate-900 p-4 rounded-xl border border-slate-950 flex justify-center w-full overflow-hidden">
+          <canvas id="labelCanvas" width="384" height="260" class="bg-white rounded shadow-md max-w-full h-auto"></canvas>
+        </div>
+
+        <button onclick="printCanvasSnapshot()" class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 active:scale-95 rounded-xl text-white font-black text-base shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+          單圖快照發送至印表機
+        </button>
+      </section>
+
+    </div>
+
+    <!-- 終端日誌紀錄 -->
+    <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 font-mono text-xs text-slate-400 h-32 overflow-y-auto space-y-1 shadow-inner" id="logBox">
+      <div>[系統初始化] 準備就緒，請連線藍牙熱感應機台。</div>
+    </section>
+  </div>
+
+  <script>
+    // --- 系統狀態 ---
+    let bluetoothDevice = null;
+    let printerChar = null;
+
+    function log(msg, isSuccess = false, isError = false) {
+      const box = document.getElementById('logBox');
+      const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+      let colorClass = 'text-slate-400';
+      if (isSuccess) colorClass = 'text-emerald-400 font-bold';
+      if (isError) colorClass = 'text-rose-400 font-bold';
+      box.innerHTML = `<div class="${colorClass}">[${time}] ${msg}</div>` + box.innerHTML;
+    }
+
+    // --- 繪製單圖快照 ---
+    function drawSnapshot() {
+      const canvas = document.getElementById('labelCanvas');
+      const ctx = canvas.getContext('2d');
+
+      // 取得文字與配置
+      const t1 = document.getElementById('t1').value, s1 = parseInt(document.getElementById('s1').value), b1 = document.getElementById('b1').checked;
+      const t2 = document.getElementById('t2').value, s2 = parseInt(document.getElementById('s2').value), b2 = document.getElementById('b2').checked;
+      const t3 = document.getElementById('t3').value, s3 = parseInt(document.getElementById('s3').value), b3 = document.getElementById('b3').checked;
+      const t4 = document.getElementById('t4').value, s4 = parseInt(document.getElementById('s4').value), b4 = document.getElementById('b4').checked;
+
+      // 更新數值文字
+      document.getElementById('v1').innerText = `${s1}px`;
+      document.getElementById('v2').innerText = `${s2}px`;
+      document.getElementById('v3').innerText = `${s3}px`;
+      document.getElementById('v4').innerText = `${s4}px`;
+
+      // 計算全圖所需高度 (動態伸縮)
+      let calculatedHeight = 24; // 頂部安全留白
+      calculatedHeight += s1 + 16;
+      calculatedHeight += s2 + 18;
+      calculatedHeight += s3 + 18;
+      if (t4.trim() !== '') calculatedHeight += s4 + 36;
+      calculatedHeight += 24; // 底部安全留白
+
+      canvas.width = 384; // 58mm 標準點數 (8 dots/mm * 48mm 可印範圍)
+      canvas.height = calculatedHeight;
+      document.getElementById('canvasMetrics').innerText = `384 x ${calculatedHeight} px`;
+
+      // 底色白
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // 字體顏色黑
+      ctx.fillStyle = '#000000';
+      ctx.textAlign = 'center';
+
+      let curY = 24;
+
+      // 第一行
+      ctx.font = `${b1 ? '700' : '400'} ${s1}px 'Noto Sans TC'`;
+      curY += s1;
+      ctx.fillText(t1, 192, curY);
+
+      // 第二行 (姓名)
+      curY += 18;
+      ctx.font = `${b2 ? '900' : '400'} ${s2}px 'Noto Sans TC'`;
+      curY += s2;
+      ctx.fillText(t2, 192, curY);
+
+      // 第三行 (數量)
+      curY += 18;
+      ctx.font = `${b3 ? '900' : '400'} ${s3}px 'Noto Sans TC'`;
+      curY += s3;
+      ctx.fillText(t3, 192, curY);
+
+      // 第四行 (備註外框標籤)
+      if (t4.trim() !== '') {
+        curY += 20;
+        ctx.font = `${b4 ? '700' : '400'} ${s4}px 'Noto Sans TC'`;
+        const textWidth = ctx.measureText(`【 ${t4} 】`).width;
+        const boxPadX = 14;
+        const boxHeight = s4 + 14;
+        
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(192 - (textWidth / 2) - boxPadX, curY, textWidth + (boxPadX * 2), boxHeight);
+        
+        curY += s4 + 2;
+        ctx.fillText(`【 ${t4} 】`, 192, curY);
+      }
+    }
+
+    function resetDefaults() {
+      document.getElementById('t1').value = "土農-本會直銷站 2026-10-04";
+      document.getElementById('s1').value = 22; document.getElementById('b1').checked = false;
+      document.getElementById('t2').value = "王大明";
+      document.getElementById('s2').value = 48; document.getElementById('b2').checked = true;
+      document.getElementById('t3').value = "2 大瓶 , 1 中瓶";
+      document.getElementById('s3').value = 38; document.getElementById('b3').checked = true;
+      document.getElementById('t4').value = "預留款 / 下午取";
+      document.getElementById('s4').value = 20; document.getElementById('b4').checked = true;
+      drawSnapshot();
+    }
+
+    // --- Web Bluetooth 通訊 ---
+    async function connectBluetooth() {
+      if (!navigator.bluetooth) {
+        alert("請使用支援 Web Bluetooth 的環境 (如 Android Chrome 或 iOS Bluefy App) 開啟！");
+        return;
+      }
+      try {
+        log("發起藍牙搜尋...");
+        bluetoothDevice = await navigator.bluetooth.requestDevice({
+          acceptAllDevices: true,
+          optionalServices: [
+            '000018f0-0000-1000-8000-00805f9b34fb', // 標準列印服務
+            '49535343-fe7d-4ae5-8fa9-9fafd205e455'  // 芯燁常用自訂服務
+          ]
+        });
+
+        log(`配對裝置: ${bluetoothDevice.name || '未知印表機'}`);
+        const server = await bluetoothDevice.gatt.connect();
+        const services = await server.getPrimaryServices();
+
+        for (let service of services) {
+          try {
+            const characteristics = await service.getCharacteristics();
+            for (let char of characteristics) {
+              if (char.properties.write || char.properties.writeWithoutResponse) {
+                printerChar = char;
+                document.getElementById('connBadge').innerText = `已連線: ${bluetoothDevice.name || '印表機'}`;
+                document.getElementById('connBadge').className = "px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+                log("通訊特徵就緒，可執行快照列印！", true);
+                return;
+              }
+            }
+          } catch (e) {}
+        }
+        log("未找到可寫入特徵值", false, true);
+      } catch (e) {
+        log(`連線失敗: ${e.message}`, false, true);
+      }
+    }
+
+    // --- 畫布點陣快照轉譯與分段發送 (GS v 0 指令) ---
+    async function printCanvasSnapshot() {
+      if (!printerChar) {
+        alert("請先完成印表機藍牙連線！");
+        return;
+      }
+
+      const canvas = document.getElementById('labelCanvas');
+      const ctx = canvas.getContext('2d');
+      const width = canvas.width;   // 固定 384
+      const height = canvas.height;
+      const imgData = ctx.getImageData(0, 0, width, height).data;
+
+      log(`轉換點陣資料中 (寬 ${width} x 高 ${height})...`);
+
+      let payload = [
+        0x1B, 0x40,             // ESC @: 初始化
+        0x1C, 0x26,             // FS &: 啟用 CP936 漢字模式保障基底編碼
+        0x1B, 0x61, 0x01        // ESC a 1: 居中
+      ];
+
+      // GS v 0 點陣點陣圖指令: 0x1D 0x76 0x30 m xL xH yL yH
+      const xL = 48; // 384 / 8 = 48 bytes 寬
+      const xH = 0;
+      const yL = height % 256;
+      const yH = Math.floor(height / 256);
+
+      payload.push(0x1D, 0x76, 0x30, 0, xL, xH, yL, yH);
+
+      // 二值化圖元打包 (1-bit per dot)
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x += 8) {
+          let byte = 0;
+          for (let b = 0; b < 8; b++) {
+            if (x + b < width) {
+              const pixelIdx = ((y * width) + (x + b)) * 4;
+              // 灰度權重 (RGB > 128 為白，其餘為黑點印出)
+              const gray = 0.299 * imgData[pixelIdx] + 0.587 * imgData[pixelIdx + 1] + 0.114 * imgData[pixelIdx + 2];
+              if (gray < 140) {
+                byte |= (1 << (7 - b));
+              }
+            }
+          }
+          payload.push(byte);
+        }
+      }
+
+      // 進紙與半切/全切
+      payload.push(0x0A, 0x0A, 0x0A, 0x1D, 0x56, 0x42, 0x00);
+
+      // 藍牙 MTU 分包寫入 (每包 64 bytes，避免 BLE 緩衝溢位)
+      const data = new Uint8Array(payload);
+      const chunkSize = 64;
+      let offset = 0;
+
+      log(`資料封裝完成 (${data.length} 字節)，發送中...`);
+
+      try {
+        while (offset < data.length) {
+          const chunk = data.slice(offset, offset + chunkSize);
+          if (printerChar.properties.writeWithoutResponse) {
+            await printerChar.writeValueWithoutResponse(chunk);
+          } else {
+            await printerChar.writeValue(chunk);
+          }
+          offset += chunkSize;
+          await new Promise(r => setTimeout(r, 20)); // 間隔防塞車
+        }
+        log("快照資料傳送完成，出單成功！", true);
+      } catch (err) {
+        log(`列印失敗: ${err.message}`, false, true);
+      }
+    }
+
+    // 頁面載入後自動繪製一次預設快照
+    window.addEventListener('load', () => {
+      // 確保字型載入後渲染正確
+      document.fonts.ready.then(() => {
+        drawSnapshot();
+      });
+    });
+  </script>
+</body>
+</html>
